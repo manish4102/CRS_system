@@ -451,25 +451,25 @@ def main():
                     key="zip_uploader"
                 )
                 if zip_file:
-    with st.spinner("Extracting resumes from zip..."):
-        try:
-            with zipfile.ZipFile(zip_file, 'r') as zip_ref:
-                temp_dir = "temp_resumes"
-                zip_ref.extractall(temp_dir)
+                    with st.spinner("Extracting resumes from zip..."):
+                    try:
+                        with zipfile.ZipFile(zip_file, 'r') as zip_ref:
+                            temp_dir = "temp_resumes"
+                            zip_ref.extractall(temp_dir)
                 
-                for root, _, files in os.walk(temp_dir):
-                    for file in files:
-                        if not file.startswith('._'):  # Skip macOS metadata files
-                            file_path = os.path.join(root, file)
-                            if file.lower().endswith(('.pdf', '.docx', '.txt')):
-                                with open(file_path, 'rb') as f:
-                                    text = extract_text_from_file(f)
-                                    if text:
-                                        resumes.append({
-                                            "filename": file,
-                                            "text": text
-                                        })
-            shutil.rmtree(temp_dir)
+                            for root, _, files in os.walk(temp_dir):
+                                for file in files:
+                                    if not file.startswith('._'):  # Skip macOS metadata files
+                                        file_path = os.path.join(root, file)
+                                    if file.lower().endswith(('.pdf', '.docx', '.txt')):
+                                        with open(file_path, 'rb') as f:
+                                            text = extract_text_from_file(f)
+                                            if text:
+                                                resumes.append({
+                                                    "filename": file,
+                                                    "text": text
+                                                    })
+                            shutil.rmtree(temp_dir)
                         except Exception as e:
                             st.error(f"Error processing zip file: {str(e)}")
 

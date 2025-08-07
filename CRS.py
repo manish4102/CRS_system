@@ -17,6 +17,7 @@ from sklearn.metrics import classification_report
 import joblib
 import zipfile
 import shutil
+import tempfile
 
 # Set page config at the very beginning (must be first Streamlit command)
 st.set_page_config(
@@ -88,12 +89,12 @@ def process_zip_file(zip_file):
     temp_dir = tempfile.mkdtemp()
     
     try:
-        # Save the zip file
+        # Save the zip file to disk
         zip_path = os.path.join(temp_dir, "uploaded.zip")
         with open(zip_path, "wb") as f:
             f.write(zip_file.getbuffer())
         
-        # Process the zip
+        # Process the zip file
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             for zip_info in zip_ref.infolist():
                 # Skip macOS metadata and non-resume files
@@ -113,13 +114,12 @@ def process_zip_file(zip_file):
                                 "text": text
                             })
                 except Exception:
-                    # Silently skip files that cause errors
-                    continue
+                    continue  # Silently skip files that cause errors
     
-    except Exception:
-        # Silently handle any ZIP processing errors
-        pass
+    except Exception as e:
+        st.error(f"Error processing ZIP file: {str(e)}")
     finally:
+        # Clean up temporary files
         try:
             shutil.rmtree(temp_dir, ignore_errors=True)
         except:
@@ -497,7 +497,10 @@ def main():
                 if zip_file:
                     with st.spinner("Extracting resumes from zip..."):
                         resumes = process_zip_file(zip_file)
-                        st.success(f"Processed {len(resumes)} resumes from ZIP file")
+                        if resumes:  # Only show success if we actually processed files
+                            st.success(f"Processed {len(resumes)} resumes from ZIP file")
+                        else:
+                            st.warning("No valid resumes found in the ZIP file")
                         try:
                             with zipfile.ZipFile(zip_file, 'r') as zip_ref:
                                 temp_dir = "temp_resumes"
@@ -653,7 +656,10 @@ def main():
             if zip_file:
                 with st.spinner("Extracting resumes from zip..."):
                     resumes = process_zip_file(zip_file)
-                    st.success(f"Processed {len(resumes)} resumes from ZIP file")
+                    if resumes:  # Only show success if we actually processed files
+                            st.success(f"Processed {len(resumes)} resumes from ZIP file")
+                    else:
+                        st.warning("No valid resumes found in the ZIP file")
                     try:
                         with zipfile.ZipFile(zip_file, 'r') as zip_ref:
                             temp_dir = "temp_resumes"

@@ -19,14 +19,12 @@ import zipfile
 import shutil
 import tempfile
 
-# Set page config at the very beginning (must be first Streamlit command)
 st.set_page_config(
     page_title="Candidate Recommendation Engine", 
     layout="wide",
     page_icon="🧑‍💼"
 )
 
-# Initialize session state
 if 'api_key' not in st.session_state:
     st.session_state.api_key = None
 if 'models_loaded' not in st.session_state:
@@ -34,13 +32,12 @@ if 'models_loaded' not in st.session_state:
 if 'model_trained' not in st.session_state:
     st.session_state.model_trained = False
 
-# Function to train and save the model
+
 def train_and_save_model(dataset_path):
     try:
-        # Load dataset
+       
         df = pd.read_csv(dataset_path)
         
-        # Preprocessing
         categorical_cols = ['Age', 'EdLevel', 'Gender', 'MainBranch']
         label_encoders = {}
         
@@ -49,7 +46,6 @@ def train_and_save_model(dataset_path):
             df[col] = le.fit_transform(df[col].astype(str))
             label_encoders[col] = le
         
-        # Feature selection
         features = ['Age', 'EdLevel', 'Gender', 'MainBranch', 
                    'YearsCode', 'YearsCodePro', 'PreviousSalary', 'ComputerSkills']
         target = 'Employed'
@@ -57,23 +53,23 @@ def train_and_save_model(dataset_path):
         X = df[features]
         y = df[target]
         
-        # Train-test split
+        
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
         
-        # Feature scaling
+        
         scaler = StandardScaler()
         X_train = scaler.fit_transform(X_train)
         X_test = scaler.transform(X_test)
         
-        # Train model
+        
         model = RandomForestClassifier(n_estimators=100, random_state=42)
         model.fit(X_train, y_train)
         
-        # Evaluate
+        
         y_pred = model.predict(X_test)
         report = classification_report(y_test, y_pred)
         
-        # Save artifacts
+       
         joblib.dump(model, 'employability_model.pkl')
         joblib.dump(scaler, 'scaler.pkl')
         joblib.dump(label_encoders, 'label_encoders.pkl')
@@ -89,15 +85,14 @@ def process_zip_file(zip_file):
     temp_dir = tempfile.mkdtemp()
     
     try:
-        # Save the zip file to a temporary location
         zip_path = os.path.join(temp_dir, "uploaded.zip")
         with open(zip_path, "wb") as f:
             f.write(zip_file.getbuffer())
         
-        # Process each file in the zip
+        
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             for zip_info in zip_ref.infolist():
-                # Skip system files and non-resume files
+               
                 if any(zip_info.filename.startswith(x) for x in ['__MACOSX/', '._']):
                     continue
                 
@@ -105,7 +100,7 @@ def process_zip_file(zip_file):
                     continue
                 
                 try:
-                    # Extract and process the file
+                   
                     extracted_path = zip_ref.extract(zip_info, temp_dir)
                     with open(extracted_path, 'rb') as f:
                         text = extract_text_from_file(f)
@@ -115,12 +110,11 @@ def process_zip_file(zip_file):
                                 "text": text
                             })
                 except Exception:
-                    continue  # Silently skip problematic files
+                    continue 
     
     except Exception:
-        pass  # Silently handle all ZIP processing errors
+        pass 
     finally:
-        # Clean up temporary files
         try:
             shutil.rmtree(temp_dir, ignore_errors=True)
         except:
@@ -128,16 +122,16 @@ def process_zip_file(zip_file):
     
     return resumes
 
-# Improved text extraction with better PDF handling
+
 def extract_text_from_file(file) -> Optional[str]:
     try:
-        # Handle both uploaded files and file-like objects
-        if hasattr(file, 'type'):  # Regular file upload
+        
+        if hasattr(file, 'type'): 
             file_type = file.type
             file_content = file.getvalue()
-        else:  # File from ZIP or other source
+        else: 
             file_content = file.read() if hasattr(file, 'read') else file
-            # Detect file type from extension
+            
             filename = getattr(file, 'name', 'file').lower()
             if filename.endswith('.pdf'):
                 file_type = 'application/pdf'
@@ -149,7 +143,7 @@ def extract_text_from_file(file) -> Optional[str]:
                 st.error(f"Unsupported file format: {filename}")
                 return None
 
-        # Process based on file type
+        
         if file_type == "application/pdf":
             reader = PyPDF2.PdfReader(io.BytesIO(file_content))
             text = ""
@@ -171,7 +165,7 @@ def extract_text_from_file(file) -> Optional[str]:
         st.error(f"Error processing {filename}: {str(e)}")
         return None
 
-# Enhanced skill extraction with better pattern matching
+
 def extract_skills(text: str) -> List[str]:
     technical_skills = {
         'python': 'Python',
@@ -230,17 +224,17 @@ def extract_skills(text: str) -> List[str]:
     
     return sorted(found_skills)
 
-# Enhanced AI summary generation
+
 def generate_ai_summary(job_desc: str, resume_text: str, skills: List[str]) -> str:
     if st.session_state.api_key is None:
         st.error("Gemini API key not configured")
         return None
     
     try:
-        # Configure the Gemini client
+        
         genai.configure(api_key=st.session_state.api_key)
         
-        # Set up the model - USING GEMINI FLASH
+       
         generation_config = {
             "temperature": 0.5,
             "max_output_tokens": 400,
@@ -265,7 +259,7 @@ def generate_ai_summary(job_desc: str, resume_text: str, skills: List[str]) -> s
         Be specific and reference actual skills/experiences mentioned.
         """
         
-        # Using Gemini Flash model
+        
         model = genai.GenerativeModel('gemini-1.5-flash')
         response = model.generate_content(prompt)
         
@@ -274,41 +268,40 @@ def generate_ai_summary(job_desc: str, resume_text: str, skills: List[str]) -> s
         st.error(f"AI analysis failed: {str(e)}")
         return None
 
-# Improved employability prediction with better error handling
+
 def predict_employability(resume_info: Dict[str, Any], model, scaler, label_encoders) -> float:
     try:
-        # Create DataFrame with all required columns
+        
         required_columns = ['Age', 'EdLevel', 'Gender', 'MainBranch', 
                           'YearsCode', 'YearsCodePro', 'PreviousSalary', 'ComputerSkills']
         
-        # Fill missing values with defaults
+        
         for col in required_columns:
             if col not in resume_info:
                 resume_info[col] = 'unknown' if col in ['Age', 'EdLevel', 'Gender', 'MainBranch'] else 0
         
         df = pd.DataFrame([resume_info])
         
-        # Encode categorical variables
+        
         for col, le in label_encoders.items():
             if col in df.columns:
-                # Handle unseen labels
+               
                 df[col] = df[col].apply(lambda x: x if str(x) in le.classes_ else 'unknown')
                 if 'unknown' not in le.classes_:
                     le.classes_ = np.append(le.classes_, 'unknown')
                 df[col] = le.transform(df[col])
         
-        # Scale features
+       
         X = df[required_columns]
         X_scaled = scaler.transform(X)
         
-        # Predict probability of being employed
+        
         proba = model.predict_proba(X_scaled)[0][1]
         return round(proba * 100, 2)
     except Exception as e:
         st.error(f"Error predicting employability: {str(e)}")
         return 0.0
 
-# Enhanced candidate evaluation with better scoring
 def evaluate_candidates(job_desc: str, resumes: List[Dict[str, Any]], embedding_model, employability_model, scaler, label_encoders):
     candidates = []
     job_embedding = embedding_model.encode([job_desc])[0]
@@ -319,23 +312,22 @@ def evaluate_candidates(job_desc: str, resumes: List[Dict[str, Any]], embedding_
         if not text:
             continue
             
-        # Extract skills
+        
         skills = extract_skills(text)
         skill_count = len(skills)
         
-        # Calculate keyword matches
+        
         resume_keywords = set(re.findall(r'\b\w{4,}\b', text.lower()))
         keyword_matches = len(job_keywords & resume_keywords)
         keyword_ratio = keyword_matches / len(job_keywords) if job_keywords else 0
         
-        # Calculate experience estimates based on keyword matches
-        experience_years = min(keyword_matches // 2, 20)  # Cap at 20 years
-        pro_experience_years = min(keyword_matches // 3, 15)  # Cap at 15 years
         
-        # Create resume info for prediction
+        experience_years = min(keyword_matches // 2, 20)  
+        pro_experience_years = min(keyword_matches // 3, 15)  
+        
         resume_info = {
-            'Age': '25-35',  # Default age range
-            'EdLevel': 'Bachelor',  # Default education level
+            'Age': '25-35',  
+            'EdLevel': 'Bachelor',  
             'Gender': 'unknown',
             'MainBranch': 'Professional developer' if pro_experience_years > 2 else 'Not professional developer',
             'YearsCode': experience_years,
@@ -344,17 +336,17 @@ def evaluate_candidates(job_desc: str, resumes: List[Dict[str, Any]], embedding_
             'ComputerSkills': skill_count
         }
         
-        # Calculate scores
+        
         resume_embedding = embedding_model.encode([text])[0]
         similarity_score = cosine_similarity([job_embedding], [resume_embedding])[0][0] * 100
         employability_score = predict_employability(resume_info, employability_model, scaler, label_encoders)
         
-        # Enhanced combined scoring
+        
         combined_score = (
-            0.5 * similarity_score +  # Content similarity
-            0.3 * employability_score +  # Predicted employability
-            0.1 * keyword_ratio * 100 +  # Keyword match ratio
-            0.1 * (skill_count / 20 * 100)  # Normalized skill count (cap at 20)
+            0.5 * similarity_score +  
+            0.3 * employability_score + 
+            0.1 * keyword_ratio * 100 + 
+            0.1 * (skill_count / 20 * 100)  
         )
         
         candidates.append({
@@ -373,13 +365,13 @@ def evaluate_candidates(job_desc: str, resumes: List[Dict[str, Any]], embedding_
     
     return sorted(candidates, key=lambda x: x["combined_score"], reverse=True)
 
-# Main App
+
 def main():
-    # Sidebar configuration
+    
     with st.sidebar:
         st.title("Configuration")
         
-        # Dataset upload for training
+        
         st.subheader("Model Training")
         dataset_file = st.file_uploader("Upload training dataset (CSV)", type=['csv'])
         
@@ -394,8 +386,8 @@ def main():
                     st.text(report)
                     st.rerun()
         
-        # API Key Setup
-        st.subheader("OpenAI API Key")
+        
+        st.subheader("Gemini API Key")
         if st.session_state.api_key is None:
             api_key = st.text_input("Enter your OpenAI API key:", 
                                   type="password",
@@ -410,25 +402,25 @@ def main():
                 st.session_state.api_key = None
                 st.rerun()
         
-        # Model information
+       
         st.subheader("Model Status")
         if st.session_state.get('model_trained', False) or os.path.exists('employability_model.pkl'):
             st.success("Model is ready")
         else:
             st.warning("Model not trained yet")
 
-    # Create tabs
+    
     tab1, tab2 = st.tabs(["Advanced Recommendation", "Basic Recommendation"])
     
     with tab1:
         st.title("🧑‍💼 Advanced Candidate Recommendation")
         
-        # Check if model is trained
+       
         if not st.session_state.get('model_trained', False) and not os.path.exists('employability_model.pkl'):
             st.warning("Please train the model first using the sidebar")
             st.stop()
         
-        # Load models
+        
         try:
             embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
             employability_model = joblib.load('employability_model.pkl')
@@ -438,7 +430,7 @@ def main():
             st.error(f"Failed to load models: {str(e)}")
             st.stop()
         
-        # Job description input
+        
         with st.container():
             st.subheader("📝 Job Description")
             job_desc = st.text_area(
@@ -448,11 +440,11 @@ def main():
                 key="job_description_input"
             )
         
-        # Resume upload options
+        
         with st.container():
             st.subheader("📂 Upload Resumes")
             
-            # Create three options for resume input
+            
             upload_option = st.radio(
                 "Choose how to provide resumes:",
                 options=["Upload files", "Paste text", "Upload zip folder"],
@@ -498,7 +490,7 @@ def main():
                 if zip_file:
                     with st.spinner("Extracting resumes from zip..."):
                         resumes = process_zip_file(zip_file)
-                        if resumes:  # Only show success if we actually processed files
+                        if resumes:  
                             st.success(f"Processed {len(resumes)} resumes from ZIP file")
                         else:
                             st.warning("No valid resumes found in the ZIP file")
@@ -509,7 +501,7 @@ def main():
                 
                                 for root, _, files in os.walk(temp_dir):
                                     for file in files:
-                                        if not file.startswith('._'):  # Skip macOS metadata files
+                                        if not file.startswith('._'): 
                                             file_path = os.path.join(root, file)
                                         if file.lower().endswith(('.pdf', '.docx', '.txt')):
                                             with open(file_path, 'rb') as f:
@@ -525,7 +517,7 @@ def main():
 
         if st.button("🚀 Evaluate Candidates", type="primary") and job_desc and resumes:
             with st.spinner("Analyzing candidates..."):
-                # Evaluate candidates
+               
                 candidates = evaluate_candidates(
                     job_desc, 
                     resumes, 
@@ -535,11 +527,11 @@ def main():
                     label_encoders
                 )
                 
-                # Display results with automatic AI summary
+                
                 st.subheader("🏆 Top Candidates")
                 st.write(f"Found {len(candidates)} qualified candidates")
                 
-                # Score distribution
+                
                 st.write("### 📊 Score Comparison")
                 score_df = pd.DataFrame({
                     'Candidate': [c['id'] for c in candidates],
@@ -551,7 +543,7 @@ def main():
                 })
                 st.bar_chart(score_df.set_index('Candidate'))
                 
-                # Display top candidates with automatic AI summary
+               
                 st.write("### 🔍 Candidate Details")
                 for i, candidate in enumerate(candidates[:10]):
                     with st.expander(f"{i+1}. {candidate['id']} - {candidate['filename']} (Score: {candidate['combined_score']})"):
@@ -567,7 +559,7 @@ def main():
                             st.write(", ".join(candidate['skills']))
                         
                         with col2:
-                            # Automatic AI Analysis
+                           
                             if st.session_state.api_key:
                                 with st.spinner("Generating AI analysis..."):
                                     analysis = generate_ai_summary(
@@ -579,7 +571,7 @@ def main():
                                         st.subheader("AI Analysis")
                                         st.write(analysis)
                             
-                            # Resume preview
+                            
                             st.subheader("Resume Preview")
                             st.text_area(
                                 f"resume_preview_{i}",
@@ -588,7 +580,7 @@ def main():
                                 label_visibility="collapsed"
                             )
                 
-                # Download option
+               
                 st.download_button(
                     label="📥 Download Results",
                     data=score_df.to_csv(index=False),
@@ -599,18 +591,18 @@ def main():
     with tab2:
         st.title("Basic Candidate Recommendation")
         
-        # Load embedding model
+       
         embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
         
-        # Job description input
+        
         job_desc = st.text_area("Job Description", height=200, 
                               placeholder="Paste the job description here...",
                               key="simple_job_desc")
         
-        # Resume upload options
+        
         st.subheader("Upload Candidate Resumes")
         
-        # Create three options for resume input
+        
         upload_option = st.radio(
             "Choose how to provide resumes:",
             options=["Upload files", "Paste text", "Upload zip folder"],
@@ -657,7 +649,7 @@ def main():
             if zip_file:
                 with st.spinner("Extracting resumes from zip..."):
                     resumes = process_zip_file(zip_file)
-                    if resumes:  # Only show success if we actually processed files
+                    if resumes:  
                             st.success(f"Processed {len(resumes)} resumes from ZIP file")
                     else:
                         st.warning("No valid resumes found in the ZIP file")
@@ -669,7 +661,7 @@ def main():
                 
                             for root, _, files in os.walk(temp_dir):
                                 for filename in files:
-                        # Skip macOS metadata files and non-resume files
+                        
                                     if filename.startswith('._') or not filename.lower().endswith(('.pdf', '.docx', '.txt')):
                                         continue
                             
@@ -690,23 +682,23 @@ def main():
                     except Exception as e:
                         st.error(f"Error processing ZIP file: {str(e)}")
                     finally:
-            # Clean up temp directory
+            
                         if os.path.exists(temp_dir):
                             shutil.rmtree(temp_dir, ignore_errors=True)
 
         if st.button("Find Best Candidates", key="simple_find_candidates") and job_desc and resumes:
             with st.spinner("Processing candidates..."):
-                # Process files
+                
                 candidates = []
                 job_embedding = embedding_model.encode([job_desc])[0]
                 
                 for i, resume in enumerate(resumes):
                     text = resume['text']
-                    # Calculate similarity
+                    
                     resume_embedding = embedding_model.encode([text])[0]
                     similarity_score = cosine_similarity([job_embedding], [resume_embedding])[0][0] * 100
                     
-                    # Extract skills
+                    
                     skills = extract_skills(text)
                     
                     candidates.append({
@@ -721,10 +713,10 @@ def main():
                     st.error("No valid resumes found")
                     return
                 
-                # Sort by score
+               
                 candidates_sorted = sorted(candidates, key=lambda x: x["score"], reverse=True)
                 
-                # Display top candidates
+                
                 st.subheader("Top Candidates")
                 
                 for i, candidate in enumerate(candidates_sorted[:10]):
@@ -733,7 +725,7 @@ def main():
                         st.write(f"**Similarity Score:** {candidate['score']}%")
                         st.write(f"**Skills:** {', '.join(candidate['skills'])}")
                         
-                        # Automatic AI summary
+                       
                         if st.session_state.api_key:
                             with st.spinner("Generating AI analysis..."):
                                 summary = generate_ai_summary(
@@ -745,7 +737,7 @@ def main():
                                     st.write("**AI Summary:**")
                                     st.write(summary)
                         
-                        # Show resume preview
+                        
                         st.write("**Resume Preview:**")
                         st.text_area(
                             f"simple_resume_preview_{i}",

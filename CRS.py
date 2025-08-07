@@ -85,19 +85,15 @@ def train_and_save_model(dataset_path):
     
 def process_zip_file(zip_file):
     resumes = []
-    temp_dir = None
+    temp_dir = tempfile.mkdtemp()
     
     try:
-        # Create a temporary directory
-        temp_dir = os.path.join("/tmp", f"resumes_{hash(zip_file.name)}")
-        os.makedirs(temp_dir, exist_ok=True)
-        
-        # Save the zip file to disk (needed for Streamlit Cloud)
+        # Save the zip file
         zip_path = os.path.join(temp_dir, "uploaded.zip")
         with open(zip_path, "wb") as f:
             f.write(zip_file.getbuffer())
         
-        # Process the zip file
+        # Process the zip
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             for zip_info in zip_ref.infolist():
                 # Skip macOS metadata and non-resume files
@@ -108,7 +104,6 @@ def process_zip_file(zip_file):
                     continue
                 
                 try:
-                    # Extract and process each file
                     extracted_path = zip_ref.extract(zip_info, temp_dir)
                     with open(extracted_path, 'rb') as f:
                         text = extract_text_from_file(f)
@@ -117,19 +112,18 @@ def process_zip_file(zip_file):
                                 "filename": os.path.basename(zip_info.filename),
                                 "text": text
                             })
-                except Exception as e:
-                    st.warning(f"Skipped {zip_info.filename}: {str(e)}")
+                except Exception:
+                    # Silently skip files that cause errors
                     continue
     
-    except Exception as e:
-        st.error(f"Error processing ZIP file: {str(e)}")
+    except Exception:
+        # Silently handle any ZIP processing errors
+        pass
     finally:
-        # Clean up temporary files
-        if temp_dir and os.path.exists(temp_dir):
-            try:
-                shutil.rmtree(temp_dir, ignore_errors=True)
-            except:
-                pass
+        try:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+        except:
+            pass
     
     return resumes
 

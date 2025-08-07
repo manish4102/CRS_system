@@ -80,7 +80,7 @@ A Streamlit-based intelligent tool for evaluating job applicants based on their 
 
 1. **Clone the repo**
    ```bash
-   git clone https://github.com/your-username/candidate-recommendation-engine.git
+   git clone https://github.com/your-username/CRS_system.git
    cd candidate-recommendation-engine
 
 

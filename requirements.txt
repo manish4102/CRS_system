@@ -1,0 +1,10 @@
+streamlit
+pandas
+PyPDF2
+python-docx
+numpy
+scikit-learn
+sentence-transformers
+google-generativeai
+joblib
+typing-extensions

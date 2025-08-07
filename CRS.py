@@ -608,38 +608,36 @@ def main():
                 with st.spinner("Extracting resumes from zip..."):
                     try:
                         with zipfile.ZipFile(zip_file, 'r') as zip_ref:
-                        temp_dir = "temp_resumes"
-                        os.makedirs(temp_dir, exist_ok=True)
-                        zip_ref.extractall(temp_dir)
+                            temp_dir = "temp_resumes"
+                            os.makedirs(temp_dir, exist_ok=True)
+                            zip_ref.extractall(temp_dir)
                 
-                        for root, _, files in os.walk(temp_dir):
-                            for filename in files:
+                            for root, _, files in os.walk(temp_dir):
+                                for filename in files:
                         # Skip macOS metadata files and non-resume files
-                                if filename.startswith('._') or not filename.lower().endswith(('.pdf', '.docx', '.txt')):
-                                    continue
+                                    if filename.startswith('._') or not filename.lower().endswith(('.pdf', '.docx', '.txt')):
+                                        continue
                             
-                                file_path = os.path.join(root, filename)
-                                try:
-                                    with open(file_path, 'rb') as f:
-                                        text = extract_text_from_file(f)
-                                        if text:
-                                            resumes.append({
-                                                "filename": filename,
-                                                "text": text
-                                            })
-                                except Exception as e:
-                                    st.error(f"Error processing file {filename}: {str(e)}")
-                                    continue
-                except zipfile.BadZipFile:
-                    st.error("Invalid ZIP file format")
-                except Exception as e:
-                    st.error(f"Error processing ZIP file: {str(e)}")
-                finally:
-            # Clean up temp directory
-                    if os.path.exists(temp_dir):
-                        shutil.rmtree(temp_dir, ignore_errors=True)
+                                    file_path = os.path.join(root, filename)
+                                    try:
+                                        with open(file_path, 'rb') as f:
+                                            text = extract_text_from_file(f)
+                                            if text:
+                                                resumes.append({
+                                                    "filename": filename,
+                                                    "text": text
+                                                })
+                                    except Exception as e:
+                                        st.error(f"Error processing file {filename}: {str(e)}")
+                                        continue
+                    except zipfile.BadZipFile:
+                        st.error("Invalid ZIP file format")
                     except Exception as e:
-                        st.error(f"Error processing zip file: {str(e)}")
+                        st.error(f"Error processing ZIP file: {str(e)}")
+                    finally:
+            # Clean up temp directory
+                        if os.path.exists(temp_dir):
+                            shutil.rmtree(temp_dir, ignore_errors=True)
 
         if st.button("Find Best Candidates", key="simple_find_candidates") and job_desc and resumes:
             with st.spinner("Processing candidates..."):

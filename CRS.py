@@ -389,7 +389,7 @@ def main():
         
         st.subheader("Gemini API Key")
         if st.session_state.api_key is None:
-            api_key = st.text_input("Enter your OpenAI API key:", 
+            api_key = st.text_input("Enter your Gemini API key:", 
                                   type="password",
                                   key="api_key_input")
             if api_key:

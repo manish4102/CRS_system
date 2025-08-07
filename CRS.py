@@ -89,22 +89,23 @@ def process_zip_file(zip_file):
     temp_dir = tempfile.mkdtemp()
     
     try:
-        # Save the zip file to disk
+        # Save the zip file to a temporary location
         zip_path = os.path.join(temp_dir, "uploaded.zip")
         with open(zip_path, "wb") as f:
             f.write(zip_file.getbuffer())
         
-        # Process the zip file
+        # Process each file in the zip
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             for zip_info in zip_ref.infolist():
-                # Skip macOS metadata and non-resume files
-                if zip_info.filename.startswith('__MACOSX/') or zip_info.filename.startswith('._'):
+                # Skip system files and non-resume files
+                if any(zip_info.filename.startswith(x) for x in ['__MACOSX/', '._']):
                     continue
                 
                 if not zip_info.filename.lower().endswith(('.pdf', '.docx', '.txt')):
                     continue
                 
                 try:
+                    # Extract and process the file
                     extracted_path = zip_ref.extract(zip_info, temp_dir)
                     with open(extracted_path, 'rb') as f:
                         text = extract_text_from_file(f)
@@ -114,10 +115,10 @@ def process_zip_file(zip_file):
                                 "text": text
                             })
                 except Exception:
-                    continue  # Silently skip files that cause errors
+                    continue  # Silently skip problematic files
     
-    except Exception as e:
-        st.error(f"Error processing ZIP file: {str(e)}")
+    except Exception:
+        pass  # Silently handle all ZIP processing errors
     finally:
         # Clean up temporary files
         try:

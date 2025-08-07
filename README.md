@@ -72,11 +72,7 @@ A Streamlit-based intelligent tool for evaluating job applicants based on their 
 - Provides probability estimates for employability
 - Feature importance analysis built-in
 
-### Training Data Requirements:
-```csv
-Age,EdLevel,Gender,MainBranch,YearsCode,YearsCodePro,PreviousSalary,ComputerSkills,Employed
-25-34,Bachelor,Male,Professional developer,5,3,75000,8,1
-35-44,Master,Female,Not professional developer,12,0,0,5,0
+
 
 ## ⚙️ How to Use
 
@@ -86,3 +82,10 @@ Age,EdLevel,Gender,MainBranch,YearsCode,YearsCodePro,PreviousSalary,ComputerSkil
    ```bash
    git clone https://github.com/your-username/candidate-recommendation-engine.git
    cd candidate-recommendation-engine
+
+
+### Training Data Requirements:
+```csv
+Age,EdLevel,Gender,MainBranch,YearsCode,YearsCodePro,PreviousSalary,ComputerSkills,Employed
+25-34,Bachelor,Male,Professional developer,5,3,75000,8,1
+35-44,Master,Female,Not professional developer,12,0,0,5,0

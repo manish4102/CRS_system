@@ -86,24 +86,44 @@ def train_and_save_model(dataset_path):
 # Improved text extraction with better PDF handling
 def extract_text_from_file(file) -> Optional[str]:
     try:
-        if file.type == "application/pdf":
-            reader = PyPDF2.PdfReader(file)
+        # Handle both uploaded files and file-like objects
+        if hasattr(file, 'type'):  # Regular file upload
+            file_type = file.type
+            file_content = file.getvalue()
+        else:  # File from ZIP or other source
+            file_content = file.read() if hasattr(file, 'read') else file
+            # Detect file type from extension
+            filename = getattr(file, 'name', 'file').lower()
+            if filename.endswith('.pdf'):
+                file_type = 'application/pdf'
+            elif filename.endswith(('.docx', '.doc')):
+                file_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            elif filename.endswith('.txt'):
+                file_type = 'text/plain'
+            else:
+                st.error(f"Unsupported file format: {filename}")
+                return None
+
+        # Process based on file type
+        if file_type == "application/pdf":
+            reader = PyPDF2.PdfReader(io.BytesIO(file_content))
             text = ""
             for page in reader.pages:
                 page_text = page.extract_text()
-                if page_text:  # Only add if text was extracted
+                if page_text:
                     text += page_text + "\n"
             return text.strip()
-        elif file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-            doc = docx.Document(io.BytesIO(file.getvalue()))
+            
+        elif file_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+            doc = docx.Document(io.BytesIO(file_content))
             return "\n".join([para.text for para in doc.paragraphs if para.text])
-        elif file.type == "text/plain":
-            return file.getvalue().decode("utf-8")
-        else:
-            st.error(f"Unsupported file format: {file.type}")
-            return None
+            
+        elif file_type == "text/plain":
+            return file_content.decode("utf-8") if isinstance(file_content, bytes) else file_content
+            
     except Exception as e:
-        st.error(f"Error processing {file.name}: {str(e)}")
+        filename = getattr(file, 'name', 'file')
+        st.error(f"Error processing {filename}: {str(e)}")
         return None
 
 # Enhanced skill extraction with better pattern matching
@@ -431,26 +451,25 @@ def main():
                     key="zip_uploader"
                 )
                 if zip_file:
-                    with st.spinner("Extracting resumes from zip..."):
-                        try:
-                            with zipfile.ZipFile(zip_file, 'r') as zip_ref:
-                                temp_dir = "temp_resumes"
-                                zip_ref.extractall(temp_dir)
-                                
-                                for root, _, files in os.walk(temp_dir):
-                                    for file in files:
-                                        file_path = os.path.join(root, file)
-                                        if file.lower().endswith(('.pdf', '.docx', '.txt')):
-                                            with open(file_path, 'rb') as f:
-                                                file_obj = io.BytesIO(f.read())
-                                                file_obj.name = file
-                                                text = extract_text_from_file(file_obj)
-                                                if text:
-                                                    resumes.append({
-                                                        "filename": file,
-                                                        "text": text
-                                                    })
-                            shutil.rmtree(temp_dir)
+    with st.spinner("Extracting resumes from zip..."):
+        try:
+            with zipfile.ZipFile(zip_file, 'r') as zip_ref:
+                temp_dir = "temp_resumes"
+                zip_ref.extractall(temp_dir)
+                
+                for root, _, files in os.walk(temp_dir):
+                    for file in files:
+                        if not file.startswith('._'):  # Skip macOS metadata files
+                            file_path = os.path.join(root, file)
+                            if file.lower().endswith(('.pdf', '.docx', '.txt')):
+                                with open(file_path, 'rb') as f:
+                                    text = extract_text_from_file(f)
+                                    if text:
+                                        resumes.append({
+                                            "filename": file,
+                                            "text": text
+                                        })
+            shutil.rmtree(temp_dir)
                         except Exception as e:
                             st.error(f"Error processing zip file: {str(e)}")
 

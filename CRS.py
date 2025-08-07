@@ -82,6 +82,56 @@ def train_and_save_model(dataset_path):
     except Exception as e:
         st.error(f"Error during training: {str(e)}")
         return None, None, None, None
+    
+def process_zip_file(zip_file):
+    resumes = []
+    temp_dir = None
+    
+    try:
+        # Create a temporary directory
+        temp_dir = os.path.join("/tmp", f"resumes_{hash(zip_file.name)}")
+        os.makedirs(temp_dir, exist_ok=True)
+        
+        # Save the zip file to disk (needed for Streamlit Cloud)
+        zip_path = os.path.join(temp_dir, "uploaded.zip")
+        with open(zip_path, "wb") as f:
+            f.write(zip_file.getbuffer())
+        
+        # Process the zip file
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            for zip_info in zip_ref.infolist():
+                # Skip macOS metadata and non-resume files
+                if zip_info.filename.startswith('__MACOSX/') or zip_info.filename.startswith('._'):
+                    continue
+                
+                if not zip_info.filename.lower().endswith(('.pdf', '.docx', '.txt')):
+                    continue
+                
+                try:
+                    # Extract and process each file
+                    extracted_path = zip_ref.extract(zip_info, temp_dir)
+                    with open(extracted_path, 'rb') as f:
+                        text = extract_text_from_file(f)
+                        if text:
+                            resumes.append({
+                                "filename": os.path.basename(zip_info.filename),
+                                "text": text
+                            })
+                except Exception as e:
+                    st.warning(f"Skipped {zip_info.filename}: {str(e)}")
+                    continue
+    
+    except Exception as e:
+        st.error(f"Error processing ZIP file: {str(e)}")
+    finally:
+        # Clean up temporary files
+        if temp_dir and os.path.exists(temp_dir):
+            try:
+                shutil.rmtree(temp_dir, ignore_errors=True)
+            except:
+                pass
+    
+    return resumes
 
 # Improved text extraction with better PDF handling
 def extract_text_from_file(file) -> Optional[str]:
@@ -452,6 +502,8 @@ def main():
                 )
                 if zip_file:
                     with st.spinner("Extracting resumes from zip..."):
+                        resumes = process_zip_file(zip_file)
+                        st.success(f"Processed {len(resumes)} resumes from ZIP file")
                         try:
                             with zipfile.ZipFile(zip_file, 'r') as zip_ref:
                                 temp_dir = "temp_resumes"
@@ -606,6 +658,8 @@ def main():
             )
             if zip_file:
                 with st.spinner("Extracting resumes from zip..."):
+                    resumes = process_zip_file(zip_file)
+                    st.success(f"Processed {len(resumes)} resumes from ZIP file")
                     try:
                         with zipfile.ZipFile(zip_file, 'r') as zip_ref:
                             temp_dir = "temp_resumes"

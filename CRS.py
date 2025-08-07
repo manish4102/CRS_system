@@ -84,25 +84,32 @@ def train_and_save_model(dataset_path):
         return None, None, None, None
 
 # Improved text extraction with better PDF handling
-def extract_text_from_file(file) -> Optional[str]:
+def extract_text_from_file(file_obj) -> Optional[str]:
     try:
-        # Handle both uploaded files and file-like objects
-        if hasattr(file, 'type'):  # Regular file upload
-            file_type = file.type
-            file_content = file.getvalue()
-        else:  # File from ZIP or other source
-            file_content = file.read() if hasattr(file, 'read') else file
-            # Detect file type from extension
-            filename = getattr(file, 'name', 'file').lower()
-            if filename.endswith('.pdf'):
-                file_type = 'application/pdf'
-            elif filename.endswith(('.docx', '.doc')):
-                file_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-            elif filename.endswith('.txt'):
-                file_type = 'text/plain'
-            else:
-                st.error(f"Unsupported file format: {filename}")
-                return None
+        # Get filename if available
+        filename = getattr(file_obj, 'name', 'unknown').lower()
+        
+        # Handle both file objects and raw bytes
+        if hasattr(file_obj, 'read'):
+            content = file_obj.read()
+        else:
+            content = file_obj
+            
+        # Determine file type
+        if filename.endswith('.pdf'):
+            reader = PyPDF2.PdfReader(io.BytesIO(content))
+            return "\n".join(page.extract_text() or "" for page in reader.pages)
+        elif filename.endswith(('.docx', '.doc')):
+            doc = docx.Document(io.BytesIO(content))
+            return "\n".join(para.text for para in doc.paragraphs if para.text)
+        elif filename.endswith('.txt'):
+            return content.decode('utf-8') if isinstance(content, bytes) else content
+        else:
+            return None
+            
+    except Exception as e:
+        st.error(f"Error processing {filename}: {str(e)}")
+        return None
 
         # Process based on file type
         if file_type == "application/pdf":
